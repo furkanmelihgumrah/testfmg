@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="tr" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zabit Kâtibi Uygulamalı Sınav Testi</title>
+    
+    <!-- PDF.js Kütüphanesi (PDF okumak için) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
+
+    <style>
+        :root {
+            /* Referans resimden esinlenilen koyu tema */
+            --bg-color: #0f1014;
+            --bg-panel: #1a1b1f;
+            --text-color: #c0c0c0; 
+            --sub-text: #606163;   
+            --primary: #e2b714;
+            --border: #303134;
+            --input-border: #303134;
+            --active-word-bg: #303134;
+            --active-word-color: #ffffff;
+            
+            /* Sonuç ekranı renkleri */
+            --correct-color: #c0c0c0;
+            --wrong-color: #ff5252;
+
+            --monospace-font: 'Courier New', Courier, monospace;
+        }
+
+        [data-theme="light"] {
+            /* Light Tema */
+            --bg-color: #f0f0f0;
+            --bg-panel: #ffffff;
+            --text-color: #111111;
+            --sub-text: #888888;
+            --primary: #d68910;
+            --border: #dddddd;
+            --input-border: #dddddd;
+            --active-word-bg: #e0e0e0;
+            --active-word-color: #000000;
+
+            --correct-color: #111111;
+            --wrong-color: #d32f2f;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: var(--monospace-font);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            transition: background-color 0.3s, color 0.3s;
+            overflow: hidden;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 1000px;
+            margin: 20px auto;
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+            height: calc(100vh - 40px);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        textarea {
+            background-color: var(--bg-panel);
+            color: var(--text-color);
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            padding: 15px;
+            font-family: inherit;
+            font-size: 1.2rem;
+            resize: none;
+            box-sizing: border-box;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        textarea:focus {
+            border-color: var(--primary);
+        }
+
+        button.btn {
+            background-color: var(--sub-text);
+            color: var(--bg-color);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-family: inherit;
+            font-size: 1.1rem;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: 0.2s;
+        }
+
+        button.btn:hover, button.btn.active {
+            background-color: var(--primary);
+            color: #2c2e31;
+        }
+
+        .pdf-upload-btn {
+            background-color: #303134;
+            color: var(--text-color);
+            border: 1px dashed var(--primary);
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 1rem;
+            display: inline-block;
+            margin-bottom: 10px;
+            transition: 0.2s;
+        }
+
+        .pdf-upload-btn:hover {
+            background-color: var(--primary);
+            color: #2c2e31;
+        }
+
+        .theme-toggle {
+            cursor: pointer;
+            background: none;
+            border: none;
+            color: var(--sub-text);
+            font-size: 1.2rem;
+            font-family: inherit;
+        }
+        
+        .theme-toggle:hover {
+            color: var(--primary);
+        }
+
+        /* Kurulum Ekranı */
+        #setup-screen {
+            margin-top: 10px;
+            text-align: center;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex-grow: 1;
+        }
+
+        #setup-screen h1 {
+            color: var(--primary);
+            margin-bottom: 15px;
+        }
+
+        #setup-screen p {
+            margin-top: 10px;
+            color: var(--sub-text);
+        }
+
+        .time-options {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 15px;
+        }
+
+        /* Test Ekranı */
+        #test-screen {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            flex-grow: 1;
+            height: 100%;
+        }
+
+        #test-screen header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            flex-shrink: 0;
+        }
+
+        #test-screen .exam-info {
+            font-size: 0.9rem;
+            color: var(--sub-text);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        #test-screen .time-control {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        #test-screen .timer {
+            font-size: 2.2rem;
+            color: var(--primary);
+            font-weight: bold;
+        }
+
+        #test-screen .exit-btn {
+            background-color: transparent;
+            color: var(--sub-text);
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            padding: 8px 15px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        #test-screen .exit-btn:hover {
+            background-color: var(--active-word-bg);
+            color: var(--active-word-color);
+        }
+
+        .workspace {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            flex-grow: 1;
+            min-height: 0; 
+        }
+
+        .ref-metin-wrapper {
+            background-color: var(--bg-panel);
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+            font-size: 1.3rem;
+            line-height: 1.5;
+            color: var(--sub-text);
+            flex: 1 1 50%; 
+            overflow-y: hidden; 
+            user-select: none;
+            position: relative;
+        }
+
+        .reference-text {
+            position: absolute;
+            width: calc(100% - 40px);
+            transition: top 0.3s ease;
+        }
+
+        #typing-area {
+            border: 2px solid var(--input-border);
+            border-radius: 8px;
+            flex: 1 1 50%; 
+            width: 100%;
+        }
+
+        .passed-word {
+            color: var(--text-color); 
+        }
+
+        .active-word {
+            background-color: var(--active-word-bg);
+            color: var(--active-word-color);
+            text-decoration: underline;
+            text-decoration-color: var(--primary);
+            border-radius: 4px;
+        }
+
+        #test-screen footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9rem;
+            color: var(--sub-text);
+            margin-top: 5px;
+            border-top: 1px solid var(--border);
+            padding-top: 10px;
+            flex-shrink: 0;
+        }
+
+        #test-screen footer .live-stats {
+            display: flex;
+            gap: 20px;
+        }
+
+        #test-screen footer a {
+            color: inherit;
+            text-decoration: none;
+            border-bottom: 1px solid currentColor;
+            cursor: pointer;
+        }
+
+        #test-screen footer a:hover {
+            color: var(--text-color);
+        }
+
+        #result-screen {
+            text-align: center;
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .stats-container {
+            flex-shrink: 0;
+        }
+
+        .stat-box {
+            display: inline-block;
+            margin: 10px 30px;
+        }
+
+        .stat-title {
+            font-size: 1.2rem;
+            color: var(--sub-text);
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 3.5rem;
+            color: var(--primary);
+            font-weight: bold;
+        }
+
+        .analysis-box {
+            background-color: var(--bg-panel);
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+            flex-grow: 1;
+            overflow-y: auto;
+            text-align: left;
+            font-size: 1.2rem;
+            line-height: 1.6;
+        }
+
+        .analysis-correct {
+            color: var(--correct-color);
+        }
+
+        .analysis-wrong {
+            color: var(--wrong-color);
+            text-decoration: underline;
+        }
+
+        .analysis-expected {
+            color: var(--sub-text);
+            font-size: 0.85em;
+            margin-left: 3px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- Kurulum Ekranı -->
+        <div id="setup-screen">
+            <div style="width: 100%; display: flex; justify-content: flex-end;">
+                <button class="theme-toggle" onclick="toggleTheme()">💡 Tema Değiştir</button>
+            </div>
+            <h1>Özel Metin Hız Testi</h1>
+            
+            <!-- PDF Yükleme Alanı -->
+            <div>
+                <label for="pdf-file-input" class="pdf-upload-btn">
+                    📁 PDF Dosyası Seç (Metni Otomatik Aktar)
+                </label>
+                <input type="file" id="pdf-file-input" accept=".pdf" style="display: none;">
+            </div>
+
+            <p>Veya metni aşağıya manuel yapıştır:</p>
+            <textarea id="custom-text-input" rows="6" placeholder="Buraya bir metin gir... Noktalama işaretleri otomatik temizlenecektir." style="width:100%; max-width:800px; display: block;"></textarea>
+            
+            <p>Süre Seçimi:</p>
+            <div class="time-options">
+                <button class="btn time-btn" data-time="60">1 Dakika</button>
+                <button class="btn time-btn" data-time="120">2 Dakika</button>
+                <button class="btn time-btn" data-time="180">3 Dakika</button>
+            </div>
+            
+            <button class="btn active" id="start-btn" style="width: 100%; max-width:400px; padding: 15px; font-size:1.3rem; border-radius: 8px;">Testi Başlat</button>
+        </div>
+
+        <!-- Test Ekranı -->
+        <div id="test-screen" class="hidden">
+            <header>
+                <div class="exam-info">2025 ZABİT KÂTİBİ UYGULAMALI SINAV · ÖZEL METİN</div>
+                <div class="time-control">
+                    <div class="timer" id="time-display">01:00</div>
+                    <button class="exit-btn" id="exit-btn">çıkış <span style="border: 1px solid var(--sub-text); padding: 0 4px; border-radius: 3px; font-size: 0.8em; margin-left: 5px;">esc</span></button>
+                </div>
+            </header>
+
+            <div class="workspace">
+                <div class="ref-metin-wrapper" id="ref-metin-wrapper">
+                    <div class="reference-text" id="reference-text-display"></div>
+                </div>
+
+                <textarea id="typing-area" placeholder="Yazmaya başladığında süre başlar..." spellcheck="false" autocomplete="off" autocorrect="off"></textarea>
+            </div>
+
+            <footer>
+                <div class="live-stats">
+                    <span id="live-word-count">0</span> kelime
+                </div>
+                <div class="live-settings">
+                    <a id="setting-scroll">otomatik kaydırma</a> · <a id="setting-control">kelime kontrolü</a>
+                </div>
+                <div class="extra-info">
+                    Sınav modu sonuçları kaydedilmez
+                </div>
+            </footer>
+        </div>
+
+        <!-- Sonuç Ekranı -->
+        <div id="result-screen" class="hidden">
+            <div class="stats-container">
+                <div class="stat-box">
+                    <div class="stat-title">Toplam Kelime</div>
+                    <div class="stat-value" id="total-words-display">0</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-title">Hatalı Kelime</div>
+                    <div class="stat-value" id="error-words-display">0</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-title">Doğru Kelime</div>
+                    <div class="stat-value" id="correct-words-display">0</div>
+                </div>
+            </div>
+            
+            <div class="analysis-box" id="analysis-display"></div>
+
+            <button class="btn active" onclick="resetApp()" style="padding: 15px 30px; font-size:1.2rem; border-radius: 8px; margin-top:15px; flex-shrink:0;">Yeni Test Yap</button>
+        </div>
+    </div>
+
+    <script>
+        const setupScreen = document.getElementById('setup-screen');
+        const testScreen = document.getElementById('test-screen');
+        const resultScreen = document.getElementById('result-screen');
+        
+        const customTextInput = document.getElementById('custom-text-input');
+        const pdfFileInput = document.getElementById('pdf-file-input');
+        const timeBtns = document.querySelectorAll('.time-btn');
+        const startBtn = document.getElementById('start-btn');
+        const exitBtn = document.getElementById('exit-btn');
+        
+        const timeDisplay = document.getElementById('time-display');
+        const referenceWrapper = document.getElementById('ref-metin-wrapper');
+        const referenceTextDisplay = document.getElementById('reference-text-display');
+        const typingArea = document.getElementById('typing-area');
+        const liveWordCountDisplay = document.getElementById('live-word-count');
+        
+        const totalWordsDisplay = document.getElementById('total-words-display');
+        const errorWordsDisplay = document.getElementById('error-words-display');
+        const correctWordsDisplay = document.getElementById('correct-words-display');
+        const analysisDisplay = document.getElementById('analysis-display');
+
+        let selectedTime = 60; 
+        let timeRemaining = 60;
+        let timerInterval;
+        let testActive = false;
+        let referenceWords = [];
+        let currentWordIndex = 0;
+
+        function toggleTheme() {
+            const html = document.documentElement;
+            if (html.getAttribute('data-theme') === 'dark') {
+                html.setAttribute('data-theme', 'light');
+            } else {
+                html.setAttribute('data-theme', 'dark');
+            }
+        }
+
+        timeBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                timeBtns.forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                selectedTime = parseInt(e.target.getAttribute('data-time'));
+                updateTimeDisplay(selectedTime);
+            });
+        });
+
+        function formatTime(seconds) {
+            const minutes = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        }
+
+        function updateTimeDisplay(seconds) {
+            timeDisplay.innerText = formatTime(seconds);
+        }
+
+        // --- PDF Okuma Fonksiyonu (PDF.js ile) ---
+        pdfFileInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const fileReader = new FileReader();
+            fileReader.onload = async function() {
+                const typedarray = new Uint8Array(this.result);
+                try {
+                    const pdf = await pdfjsLib.getDocument(typedarray).promise;
+                    let extractedText = "";
+
+                    for (let i = 1; i <= pdf.numPages; i++) {
+                        const page = await pdf.getPage(i);
+                        const textContent = await page.getTextContent();
+                        const pageText = textContent.items.map(item => item.str).join(" ");
+                        extractedText += pageText + " ";
+                    }
+
+                    // Çıkarılan metni textarea kutusuna aktar
+                    customTextInput.value = extractedText.trim();
+                    alert("PDF başarıyla okundu ve metin kutusuna aktarıldı!");
+                } catch (error) {
+                    console.error("PDF okunurken hata oluştu:", error);
+                    alert("PDF dosyası okunamadı!");
+                }
+            };
+            fileReader.readAsArrayBuffer(file);
+        });
+
+        function toTurkishLowerCase(str) {
+            if (!str) return "";
+            const letters = { "İ": "i", "I": "ı", "Ş": "ş", "Ğ": "ğ", "Ü": "ü", "Ö": "ö", "Ç": "ç" };
+            str = str.replace(/[İIŞĞÜÖÇ]/g, function(letter) { return letters[letter]; });
+            return str.toLowerCase();
+        }
+
+        startBtn.addEventListener('click', () => {
+            let text = customTextInput.value.trim();
+            if (!text) {
+                alert("Lütfen önce bir metin girin veya PDF yükleyin!");
+                return;
+            }
+
+            text = text.replace(/[^\p{L}\p{N}\s]/gu, '');
+            referenceWords = text.split(/\s+/);
+            
+            setupScreen.classList.add('hidden');
+            testScreen.classList.remove('hidden');
+            
+            currentWordIndex = 0;
+            liveWordCountDisplay.innerText = "0";
+            
+            referenceTextDisplay.innerHTML = "";
+            referenceWords.forEach((word, index) => {
+                const span = document.createElement('span');
+                span.innerText = word + " ";
+                if (index === 0) {
+                    span.classList.add('active-word');
+                }
+                referenceTextDisplay.appendChild(span);
+            });
+            
+            typingArea.value = "";
+            typingArea.placeholder = "";
+            timeRemaining = selectedTime;
+            updateTimeDisplay(timeRemaining);
+            testActive = false;
+            referenceTextDisplay.style.top = "0px"; 
+
+            typingArea.focus();
+        });
+
+        typingArea.addEventListener('input', handleInput);
+
+        typingArea.addEventListener('keydown', (e) => {
+            if (e.code === 'Enter') {
+                e.preventDefault();
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (!testScreen.classList.contains('hidden') && e.code === 'Escape') {
+                endTest();
+            }
+        });
+
+        exitBtn.addEventListener('click', endTest);
+
+        function handleInput(e) {
+            let textValue = typingArea.value;
+
+            if (textValue.startsWith(' ')) {
+                textValue = textValue.trimStart();
+                typingArea.value = textValue;
+            }
+
+            if (!testActive && textValue.length > 0) {
+                testActive = true;
+                timerInterval = setInterval(updateTimer, 1000);
+            }
+            
+            const typedArray = textValue.split(/\s+/);
+            const validTypedWords = textValue.trim() === "" ? 0 : textValue.trim().split(/\s+/).length;
+            liveWordCountDisplay.innerText = validTypedWords;
+            
+            let newIndex = typedArray.length - 1;
+
+            if (newIndex >= referenceWords.length) {
+                newIndex = referenceWords.length - 1;
+                if(textValue.endsWith(' ')) {
+                    endTest();
+                    return;
+                }
+            }
+
+            if (newIndex !== currentWordIndex || newIndex === 0) {
+                currentWordIndex = newIndex;
+                
+                for (let i = 0; i < referenceWords.length; i++) {
+                    const span = referenceTextDisplay.children[i];
+                    span.classList.remove('active-word', 'passed-word');
+                    
+                    if (i < currentWordIndex) {
+                        span.classList.add('passed-word'); 
+                    } else if (i === currentWordIndex) {
+                        span.classList.add('active-word'); 
+                        scrollToActiveWord(span);
+                    }
+                }
+            }
+        }
+
+        function scrollToActiveWord(activeSpan) {
+            const wrapperTop = referenceWrapper.offsetTop;
+            const activeSpanTop = activeSpan.offsetTop;
+            
+            const offset = activeSpanTop - referenceTextDisplay.children[0].offsetTop;
+            const lineHeight = parseInt(getComputedStyle(referenceTextDisplay).lineHeight);
+            
+            const currentScrollTop = -parseInt(referenceTextDisplay.style.top || 0);
+            
+            if (offset > currentScrollTop + referenceWrapper.offsetHeight / 1.5) {
+                const newScrollTop = -(offset - referenceWrapper.offsetHeight / 2 + lineHeight);
+                referenceTextDisplay.style.top = newScrollTop + "px";
+            }
+        }
+
+        function updateTimer() {
+            timeRemaining--;
+            updateTimeDisplay(timeRemaining);
+            
+            if (timeRemaining <= 0) {
+                endTest();
+            }
+        }
+
+        function endTest() {
+            clearInterval(timerInterval);
+            testActive = false;
+            
+            const textValue = typingArea.value.trim();
+            const finalTypedWords = textValue ? textValue.split(/\s+/) : [];
+            
+            let errCount = 0;
+            let correctCount = 0;
+            let analysisHTML = "";
+            
+            for (let i = 0; i < finalTypedWords.length; i++) {
+                if (i < referenceWords.length) {
+                    if (toTurkishLowerCase(finalTypedWords[i]) === toTurkishLowerCase(referenceWords[i])) {
+                        correctCount++;
+                        analysisHTML += `<span class="analysis-correct">${finalTypedWords[i]}</span> `;
+                    } else {
+                        errCount++;
+                        analysisHTML += `<span class="analysis-wrong">${finalTypedWords[i]}</span><span class="analysis-expected">(${referenceWords[i]})</span> `;
+                    }
+                } else {
+                    errCount++;
+                    analysisHTML += `<span class="analysis-wrong">${finalTypedWords[i]}</span> `;
+                }
+            }
+            
+            totalWordsDisplay.innerText = finalTypedWords.length;
+            errorWordsDisplay.innerText = errCount;
+            correctWordsDisplay.innerText = correctCount;
+            analysisDisplay.innerHTML = analysisHTML;
+
+            testScreen.classList.add('hidden');
+            resultScreen.classList.remove('hidden');
+        }
+
+        function resetApp() {
+            resultScreen.classList.add('hidden');
+            setupScreen.classList.remove('hidden');
+            typingArea.value = "";
+            customTextInput.value = "";
+            pdfFileInput.value = "";
+            clearInterval(timerInterval);
+            referenceTextDisplay.innerHTML = "";
+            analysisDisplay.innerHTML = "";
+        }
+
+        document.querySelector('.time-btn[data-time="60"]').classList.add('active');
+        updateTimeDisplay(60);
+    </script>
+</body>
+</html>
