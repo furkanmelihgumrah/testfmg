@@ -507,7 +507,7 @@
                     const pageText = textContent.items.map(item => item.str).join(" ");
                     extractedText += pageText + " ";
                 }
-
+                extractedText = extractedText.replace(/metin\s*\d+/gi, '').trim();
                 customTextInput.value = extractedText.trim();
             } catch (error) {
                 console.error("PDF yüklenirken hata oluştu:", error);
