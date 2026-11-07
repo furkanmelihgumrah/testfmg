@@ -414,6 +414,14 @@
                     <div class="stat-title">Doğru Kelime</div>
                     <div class="stat-value" id="correct-words-display">0</div>
                 </div>
+                <div class="stat-box">
+            <div class="stat-title">Doğru Yüzdesi</div>
+            <div class="stat-value" id="correct-percent-display">%0</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-title">Hata Yüzdesi</div>
+            <div class="stat-value" id="error-percent-display">%0</div>
+        </div>
             </div>
             
             <div class="analysis-box" id="analysis-display"></div>
@@ -443,6 +451,8 @@
         const errorWordsDisplay = document.getElementById('error-words-display');
         const correctWordsDisplay = document.getElementById('correct-words-display');
         const analysisDisplay = document.getElementById('analysis-display');
+        const correctPercentDisplay = document.getElementById('correct-percent-display');
+        const errorPercentDisplay = document.getElementById('error-percent-display');
 
         let selectedTime = 60; 
         let timeRemaining = 60;
@@ -662,6 +672,14 @@
             totalWordsDisplay.innerText = finalTypedWords.length;
             errorWordsDisplay.innerText = errCount;
             correctWordsDisplay.innerText = correctCount;
+            let correctPercent = 0;
+            let errorPercent = 0;
+            if (finalTypedWords.length > 0) {
+            correctPercent = ((correctCount / finalTypedWords.length) * 100).toFixed(1);
+            errorPercent = ((errCount / finalTypedWords.length) * 100).toFixed(1);
+        }
+        correctPercentDisplay.innerText = `%${correctPercent}`;
+        errorPercentDisplay.innerText = `%${errorPercent}`;
             analysisDisplay.innerHTML = analysisHTML;
 
             testScreen.classList.add('hidden');
@@ -677,6 +695,8 @@
             clearInterval(timerInterval);
             referenceTextDisplay.innerHTML = "";
             analysisDisplay.innerHTML = "";
+            correctPercentDisplay.innerText = "%0";
+            errorPercentDisplay.innerText = "%0";
         }
 
         document.querySelector('.time-btn[data-time="60"]').classList.add('active');
