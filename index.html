@@ -490,52 +490,74 @@
         }
 
         // Açılır listeden PDF seçildiğinde GitHub üzerinden dosyayı çekip okuma
-        pdfSelect.addEventListener('change', async (e) => {
-            const pdfUrl = e.target.value;
-            if (!pdfUrl) return;
+        
+               pdfSelect.addEventListener('change', async (e) => {
+    const pdfUrl = e.target.value;
+    if (!pdfUrl) return;
 
-            customTextInput.value = "PDF yükleniyor, lütfen bekleyin...";
-            
-            try {
-                const loadingTask = pdfjsLib.getDocument(pdfUrl);
-                const pdf = await loadingTask.promise;
-                let extractedText = "";
+    customTextInput.value = "PDF yükleniyor, lütfen bekleyin...";
 
-                for (let i = 1; i <= pdf.numPages; i++) {
-                    const page = await pdf.getPage(i);
-                    const textContent = await page.getTextContent();
-                    const pageText = textContent.items.map(item => item.str).join(" ");
-                    extractedText += pageText + " ";
-                }
-                // --- GÜÇLENDİRİLMİŞ TEMİZLİK FİLTRESİ ---
-                // 1. En baştaki "Metin 1", "metin 2" gibi başlıkları atlar
-                extractedText = extractedText.replace(/^metin\s*\d+/i, '');
+    try {
+        const pdf = await pdfjsLib.getDocument(pdfUrl).promise;
+        let extractedText = "";
 
-                // 2. Harfleri araya boşluk girmiş kelimeleri birleştirmek için döngü (örn: e dildiği -> edildiği)
-                let previousText;
-                do {
-                    previousText = extractedText;
-                    // Tek karakterli kelimeleri/harfleri bir sonraki kelimeyle/harfle birleştir
-                    extractedText = extractedText.replace(/\b([a-zA-ZğüşıöçĞÜŞİÖÇ])\s+([a-zA-ZğüşıöçĞÜŞİÖÇ]\b)/g, '$1$2');
-                } while (extractedText !== previousText); // Hiçbir değişiklik kalmayana kadar tekrarla
-
-                // 3. Art arda gelen fazla boşlukları teke indirir
-                extractedText = extractedText.replace(/\s+/g, ' ').trim();
-                // ----------------------------------------
-                customTextInput.value = extractedText.trim();
-            } catch (error) {
-                console.error("PDF yüklenirken hata oluştu:", error);
-                customTextInput.value = "";
-                alert("PDF dosyası yüklenemedi! Dosya yolunu (örneğin pdfler/metin1.pdf) kontrol edin.");
-            }
-        });
-
-        function toTurkishLowerCase(str) {
-            if (!str) return "";
-            const letters = { "İ": "i", "I": "ı", "Ş": "ş", "Ğ": "ğ", "Ü": "ü", "Ö": "ö", "Ç": "ç" };
-            str = str.replace(/[İIŞĞÜÖÇ]/g, function(letter) { return letters[letter]; });
-            return str.toLowerCase();
+        for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i);
+            const textContent = await page.getTextContent();
+            extractedText += buildPageText(textContent.items) + " ";
         }
+
+        // Baştaki "Metin 1" başlığını at
+        extractedText = extractedText.replace(/^\s*metin\s*\d+/i, '');
+
+        // Satır sonu tire birleştirmesi: "uygu- lama" -> "uygulama"
+        extractedText = extractedText.replace(/([\p{L}])-\s+([\p{Ll}])/gu, '$1$2');
+
+        // Fazla boşlukları teke indir
+        extractedText = extractedText.replace(/\s+/g, ' ').trim();
+
+        customTextInput.value = extractedText;
+    } catch (error) {
+        console.error("PDF yüklenirken hata oluştu:", error);
+        customTextInput.value = "";
+        alert("PDF dosyası yüklenemedi! Dosya yolunu (örneğin pdfler/metin1.pdf) kontrol edin.");
+    }
+});
+
+// Parçaları konumuna göre birleştirir
+function buildPageText(items) {
+    let text = "";
+    let prev = null;
+
+    for (const item of items) {
+        if (!item.str && !item.hasEOL) continue;
+
+        if (prev) {
+            const prevX = prev.transform[4];
+            const prevY = prev.transform[5];
+            const x = item.transform[4];
+            const y = item.transform[5];
+            const fontSize = Math.abs(item.transform[3]) || 10;
+
+            const prevEnd = prevX + prev.width;
+            const sameLine = Math.abs(y - prevY) < fontSize * 0.5;
+
+            if (!sameLine) {
+                // Yeni satır -> boşluk (tire ile bittiyse sonraki adımda birleşir)
+                text += " ";
+            } else {
+                const gap = x - prevEnd;
+                // Boşluk, yazı boyutunun ~%15'inden büyükse kelime arası say
+                if (gap > fontSize * 0.15) text += " ";
+            }
+        }
+
+        text += item.str;
+        prev = item;
+    }
+    return text;
+}
+             
 
         startBtn.addEventListener('click', () => {
             let text = customTextInput.value.trim();
