@@ -508,6 +508,17 @@
                     extractedText += pageText + " ";
                 }
                  extractedText = extractedText.replace(/^metin\s*\d+/i, '').trim();
+                // --- YENİ EKLENEN TEMİZLİK FİLTRELERİ ---
+                // 1. En baştaki "Metin 1", "metin 2" gibi başlıkları atlar
+                extractedText = extractedText.replace(/^metin\s*\d+/i, '');
+
+                // 2. Harfleri yanlışlıkla ayrılmış kelimeleri (örn: "e dildiği" -> "edildiği") birleştirir
+                extractedText = extractedText.replace(/\b([a-zA-ZğüşıöçĞÜŞİÖÇ])\s+([a-zA-ZğüşıöçĞÜŞİÖÇ]\b)/g, '$1$2');
+                extractedText = extractedText.replace(/\b([a-zA-ZğüşıöçĞÜŞİÖÇ])\s+([a-zA-ZğüşıöçĞÜŞİÖÇ]\b)/g, '$1$2'); // İkinci kez kontrol için
+
+                // 3. Art arda gelen fazla boşlukları teke indirir
+                extractedText = extractedText.replace(/\s+/g, ' ').trim();
+                // ----------------------------------------
                 customTextInput.value = extractedText.trim();
             } catch (error) {
                 console.error("PDF yüklenirken hata oluştu:", error);
