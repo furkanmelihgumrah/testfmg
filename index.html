@@ -507,14 +507,17 @@
                     const pageText = textContent.items.map(item => item.str).join(" ");
                     extractedText += pageText + " ";
                 }
-                 extractedText = extractedText.replace(/^metin\s*\d+/i, '').trim();
-                // --- YENİ EKLENEN TEMİZLİK FİLTRELERİ ---
+                // --- GÜÇLENDİRİLMİŞ TEMİZLİK FİLTRESİ ---
                 // 1. En baştaki "Metin 1", "metin 2" gibi başlıkları atlar
                 extractedText = extractedText.replace(/^metin\s*\d+/i, '');
 
-                // 2. Harfleri yanlışlıkla ayrılmış kelimeleri (örn: "e dildiği" -> "edildiği") birleştirir
-                extractedText = extractedText.replace(/\b([a-zA-ZğüşıöçĞÜŞİÖÇ])\s+([a-zA-ZğüşıöçĞÜŞİÖÇ]\b)/g, '$1$2');
-                extractedText = extractedText.replace(/\b([a-zA-ZğüşıöçĞÜŞİÖÇ])\s+([a-zA-ZğüşıöçĞÜŞİÖÇ]\b)/g, '$1$2'); // İkinci kez kontrol için
+                // 2. Harfleri araya boşluk girmiş kelimeleri birleştirmek için döngü (örn: e dildiği -> edildiği)
+                let previousText;
+                do {
+                    previousText = extractedText;
+                    // Tek karakterli kelimeleri/harfleri bir sonraki kelimeyle/harfle birleştir
+                    extractedText = extractedText.replace(/\b([a-zA-ZğüşıöçĞÜŞİÖÇ])\s+([a-zA-ZğüşıöçĞÜŞİÖÇ]\b)/g, '$1$2');
+                } while (extractedText !== previousText); // Hiçbir değişiklik kalmayana kadar tekrarla
 
                 // 3. Art arda gelen fazla boşlukları teke indirir
                 extractedText = extractedText.replace(/\s+/g, ' ').trim();
